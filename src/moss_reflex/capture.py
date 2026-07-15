@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -174,6 +175,35 @@ class HookCapture:
         safe = re.sub(r"[^A-Za-z0-9_.-]", "_", session_id)[:120]
         return self.state_dir / f"{safe or 'unknown'}.json"
 
+    def _lock_state(self, session_id: str) -> int:
+        lock_path = self._state_path(session_id).with_suffix(".lock")
+        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        if os.name == "nt":
+            msvcrt: Any = importlib.import_module("msvcrt")
+
+            if os.fstat(descriptor).st_size == 0:
+                os.write(descriptor, b"\0")
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            msvcrt.locking(descriptor, msvcrt.LK_LOCK, 1)
+        else:
+            fcntl: Any = importlib.import_module("fcntl")
+
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+        return descriptor
+
+    @staticmethod
+    def _unlock_state(descriptor: int) -> None:
+        if os.name == "nt":
+            msvcrt: Any = importlib.import_module("msvcrt")
+
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+        else:
+            fcntl: Any = importlib.import_module("fcntl")
+
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
     def _load_state(self, session_id: str) -> dict[str, Any]:
         path = self._state_path(session_id)
         try:
@@ -191,6 +221,15 @@ class HookCapture:
 
     def capture(self, hook_event: str, data: dict[str, Any]) -> Episode:
         session_id = str(data.get("session_id") or data.get("sessionId") or "unknown")
+        lock = self._lock_state(session_id)
+        try:
+            return self._capture_locked(hook_event, data, session_id)
+        finally:
+            self._unlock_state(lock)
+
+    def _capture_locked(
+        self, hook_event: str, data: dict[str, Any], session_id: str
+    ) -> Episode:
         state = self._load_state(session_id)
         tool_name = str(data.get("tool_name") or data.get("toolName") or hook_event)
         tool_input = data.get("tool_input", data.get("toolInput", {}))
