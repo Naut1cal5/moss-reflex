@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moss-reflex"
+version = "0.1.0"
+description = "Execution-grounded procedural memory for coding agents, powered locally by Moss"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Naut1cal5", email = "72112662+Naut1cal5@users.noreply.github.com" }]
+keywords = ["agents", "claude-code", "mcp", "memory", "moss", "procedural-memory"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "mcp>=1.20,<2",
+  "moss>=1.7.1,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "mypy>=1.13",
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.8",
+]
+
+[project.scripts]
+moss-reflex = "moss_reflex.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Naut1cal5/moss-reflex"
+Issues = "https://github.com/Naut1cal5/moss-reflex/issues"
+Source = "https://github.com/Naut1cal5/moss-reflex"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+packages = ["moss_reflex"]
